@@ -90,6 +90,10 @@ def check():
     key = data.get("license_key")
     device = data.get("device_id")
 
+    db = get_db()
+    if not db:
+        return jsonify({"status": "server_error"})
+
     cursor = db.cursor(dictionary=True)
 
     cursor.execute("SELECT * FROM licenses WHERE license_key=%s", (key,))
