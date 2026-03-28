@@ -10,7 +10,7 @@ app = Flask(__name__)
 # DATABASE CONNECTION
 # ======================
 db = mysql.connector.connect(
-host=os.environ.get("mysql.railway.internal"),
+    host=os.environ.get("mysql.railway.internal"),
     user=os.environ.get("root"),
     password=os.environ.get("wqwGsOuOzUSphRrDvuLJeCGUMYnpCFIj"),
     database=os.environ.get("railway")
