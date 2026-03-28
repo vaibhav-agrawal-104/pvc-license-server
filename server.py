@@ -1,12 +1,21 @@
 from flask import Flask, request, jsonify, send_from_directory
 import mysql.connector
 from datetime import datetime, timedelta
+import json
 import os
 
 app = Flask(__name__)
 
 # ======================
-# DATABASE CONNECTION (SAFE)
+# ROOT TEST ROUTE (VERY IMPORTANT)
+# ======================
+@app.route("/")
+def home():
+    return "SERVER WORKING ✅"
+
+
+# ======================
+# DATABASE CONNECTION
 # ======================
 def get_db():
     try:
@@ -22,25 +31,17 @@ def get_db():
 
 
 # ======================
-# 🟢 ROOT CHECK (IMPORTANT)
-# ======================
-@app.route("/")
-def home():
-    return "Server is running"
-
-
-# ======================
-# 🔐 ACTIVATE LICENSE
+# ACTIVATE LICENSE
 # ======================
 @app.route("/activate", methods=["POST"])
 def activate():
-    data = request.json
-    key = data.get("license_key")
-    device = data.get("device_id")
-
     db = get_db()
     if not db:
         return jsonify({"status": "server_error"})
+
+    data = request.json
+    key = data.get("license_key")
+    device = data.get("device_id")
 
     cursor = db.cursor(dictionary=True)
 
@@ -53,11 +54,9 @@ def activate():
     if license["status"] == "blocked":
         return jsonify({"status": "blocked"})
 
-    # First activation
     if not license["device_id"]:
         start = datetime.now()
-        plan_days = license.get("plan_days") or 28
-        expiry = start + timedelta(days=plan_days)
+        expiry = start + timedelta(days=28)
 
         cursor.execute("""
             UPDATE licenses 
@@ -67,10 +66,7 @@ def activate():
 
         db.commit()
 
-        return jsonify({
-            "status": "activated",
-            "expiry": str(expiry)
-        })
+        return jsonify({"status": "activated", "expiry": str(expiry)})
 
     if license["device_id"] != device:
         return jsonify({"status": "blocked"})
@@ -78,24 +74,21 @@ def activate():
     if license["expiry_date"] and datetime.now() > license["expiry_date"]:
         return jsonify({"status": "expired"})
 
-    return jsonify({
-        "status": "valid",
-        "expiry": str(license["expiry_date"])
-    })
+    return jsonify({"status": "valid"})
 
 
 # ======================
-# 🔍 CHECK LICENSE
+# CHECK LICENSE
 # ======================
 @app.route("/check", methods=["POST"])
 def check():
-    data = request.json
-    key = data.get("license_key")
-    device = data.get("device_id")
-
     db = get_db()
     if not db:
         return jsonify({"status": "server_error"})
+
+    data = request.json
+    key = data.get("license_key")
+    device = data.get("device_id")
 
     cursor = db.cursor(dictionary=True)
 
@@ -114,30 +107,20 @@ def check():
     if license["expiry_date"] and datetime.now() > license["expiry_date"]:
         return jsonify({"status": "expired"})
 
-    return jsonify({
-        "status": "valid",
-        "expiry": str(license["expiry_date"])
-    })
+    return jsonify({"status": "valid"})
 
 
 # ======================
-# 🔄 VERSION CHECK
+# VERSION
 # ======================
-@app.route("/version", methods=["GET"])
+@app.route("/version")
 def version():
-    return jsonify({
-        "version": "1.0.1",
-        "url": ""
-    })
+    return jsonify({"version": "1.0.0"})
 
 
 # ======================
-# 📦 DOWNLOAD UPDATE
+# RUN
 # ======================
-@app.route("/update.zip", methods=["GET"])
-def download_update():
-    return send_from_directory(
-        directory=os.getcwd(),
-        path="update.zip",
-        as_attachment=True
-    )
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
