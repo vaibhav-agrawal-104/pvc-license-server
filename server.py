@@ -1,13 +1,12 @@
 from flask import Flask, request, jsonify, send_from_directory
 import mysql.connector
 from datetime import datetime, timedelta
-import json
 import os
 
 app = Flask(__name__)
 
 # ======================
-# DATABASE CONNECTION
+# DATABASE CONNECTION (SAFE)
 # ======================
 def get_db():
     try:
@@ -21,6 +20,15 @@ def get_db():
         print("DB ERROR:", e)
         return None
 
+
+# ======================
+# 🟢 ROOT CHECK (IMPORTANT)
+# ======================
+@app.route("/")
+def home():
+    return "Server is running"
+
+
 # ======================
 # 🔐 ACTIVATE LICENSE
 # ======================
@@ -33,7 +41,7 @@ def activate():
     db = get_db()
     if not db:
         return jsonify({"status": "server_error"})
-    
+
     cursor = db.cursor(dictionary=True)
 
     cursor.execute("SELECT * FROM licenses WHERE license_key=%s", (key,))
@@ -42,15 +50,12 @@ def activate():
     if not license:
         return jsonify({"status": "invalid"})
 
-    # ❌ blocked license
     if license["status"] == "blocked":
         return jsonify({"status": "blocked"})
 
-    # 🟢 first activation
+    # First activation
     if not license["device_id"]:
         start = datetime.now()
-
-        # 🔥 use plan_days
         plan_days = license.get("plan_days") or 28
         expiry = start + timedelta(days=plan_days)
 
@@ -67,11 +72,9 @@ def activate():
             "expiry": str(expiry)
         })
 
-    # ❌ different device
     if license["device_id"] != device:
         return jsonify({"status": "blocked"})
 
-    # ❌ expired
     if license["expiry_date"] and datetime.now() > license["expiry_date"]:
         return jsonify({"status": "expired"})
 
@@ -118,22 +121,18 @@ def check():
 
 
 # ======================
-# 🔄 VERSION CHECK (AUTO UPDATE)
+# 🔄 VERSION CHECK
 # ======================
 @app.route("/version", methods=["GET"])
 def version():
-    try:
-        with open("version.json") as f:
-            return jsonify(json.load(f))
-    except:
-        return jsonify({
-            "version": "1.0.0",
-            "url": ""
-        })
+    return jsonify({
+        "version": "1.0.1",
+        "url": ""
+    })
 
 
 # ======================
-# 📦 DOWNLOAD UPDATE FILE
+# 📦 DOWNLOAD UPDATE
 # ======================
 @app.route("/update.zip", methods=["GET"])
 def download_update():
@@ -142,6 +141,3 @@ def download_update():
         path="update.zip",
         as_attachment=True
     )
-
-
-# =====================
