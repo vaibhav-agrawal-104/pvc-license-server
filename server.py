@@ -9,13 +9,17 @@ app = Flask(__name__)
 # ======================
 # DATABASE CONNECTION
 # ======================
-db = mysql.connector.connect(
-    host=os.environ.get("DB_HOST"),
-    user=os.environ.get("DB_USER"),
-    password=os.environ.get("DB_PASSWORD"),
-    database=os.environ.get("DB_NAME")
-)
-
+def get_db():
+    try:
+        return mysql.connector.connect(
+            host=os.environ.get("DB_HOST"),
+            user=os.environ.get("DB_USER"),
+            password=os.environ.get("DB_PASSWORD"),
+            database=os.environ.get("DB_NAME")
+        )
+    except Exception as e:
+        print("DB ERROR:", e)
+        return None
 
 # ======================
 # 🔐 ACTIVATE LICENSE
@@ -26,6 +30,10 @@ def activate():
     key = data.get("license_key")
     device = data.get("device_id")
 
+    db = get_db()
+    if not db:
+        return jsonify({"status": "server_error"})
+    
     cursor = db.cursor(dictionary=True)
 
     cursor.execute("SELECT * FROM licenses WHERE license_key=%s", (key,))
