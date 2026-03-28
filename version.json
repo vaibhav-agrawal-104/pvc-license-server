@@ -1,4 +1,6 @@
-{
-    "version": "1.0.1",
-    "url": "http://127.0.0.1:5000/update.zip"
-}
+@app.route("/version", methods=["GET"])
+def version():
+    return jsonify({
+        "version": "1.0.1",
+        "status": "working"
+    })
